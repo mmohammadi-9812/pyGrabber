@@ -2,11 +2,13 @@
 
 import sys
 import urllib.request
-from colorama import Fore, Back, Style
+from urllib.parse import urlparse
+import urllib.error
 import re
 import os
 
-#we could have use bs4 but thene it was dependensy and u know what depency is bad i will delete colorma lyta
+# from colorama import Fore, Back, Style
+# TODO:we could have use bs4 but thene it was dependensy and u know what depency is bad i will delete colorma lyta
 
 timeout_time = 2
 search_level = 1
@@ -20,23 +22,13 @@ def is_sutable_for_download(file , format):
         return True
     return False
 
-def no_repeted_alowed(list):
-    new_list = []
-    for x in list:
-        if x not in new_list:
-            new_list.append(x)
-    return new_list
 
 def get_sutable_links(the_set , format):
-    sutable = set()
-    for x in the_set:
-        if is_sutable_for_download(x , format):
-            sutable.add(x)
-    return sutable
+    return set(filter(lambda x: is_sutable_for_download(x), the_set))
 
-def find_links_of( url , search_level ):
-    for x in range(0,search_level):
-        print("\t" , end = "")
+
+def find_links_of(url , search_level):
+    print('\t' * search_level * (search_level-1) / 2)
     print(url)
     try:
         links = urllib.request.urlopen(url , timeout=timeout_time)
@@ -45,21 +37,17 @@ def find_links_of( url , search_level ):
         links = set(links)
         return links
     except urllib.error.URLError:
-        for x in range(0,search_level):
-            print("\t" , end = "")
-        print(Fore.RED + "Passing the link because of URL is unreachable")
-        print(Style.RESET_ALL , end="")
+        print('\t' * search_level * (search_level-1) / 2)
+        print("Passing the link because of URL is unreachable")
         return set()
     except KeyboardInterrupt:
         if input('\nAre you sure you want to quit (y/n)? : ') == 'y':
             sys.exit(0)
         print("Continue:")
         return set()
-    except:
-        for x in range(0,search_level):
-            print("\t" , end = "")
-        print(Fore.RED + "The read operation timed out")
-        print(Style.RESET_ALL , end="")
+    except TimeoutError:
+        print('\t' * search_level * (search_level-1) / 2)
+        print("The read operation timed out")
         return set()
 
 def is_url(__str__):
@@ -71,11 +59,9 @@ def downloading(all , reqs , save_dir ):# timeout_time):
     if len(all) == 0 or len(reqs) == 0:
         print('nothing found')
         sys.exit(0)
-    print(Fore.BLUE + Back.CYAN + 'from:')
-    print(Style.RESET_ALL)
+    print('from:')
     print(all)
-    print(Fore.RED + Back.CYAN + 'downloading:')
-    print(Style.RESET_ALL)
+    print('downloading:')
     print(reqs)
     print("total of " ,  end = '')
     print(len(reqs) , end = " ")
@@ -88,10 +74,12 @@ def downloading(all , reqs , save_dir ):# timeout_time):
             try:
                 urllib.request.urlretrieve(x , save_dir + '/' + x[x.rfind("/")+1:] )#, timeout=timeout_time)
             except:
-                print(Fore.RED + 'Download Failed')
-                print(Style.RESET_ALL)
+                print('Download Failed')
 
 def help():
+    """
+    function to help users how to work with program
+    """
     print("grabbs files from a specified web page with specified format")
     print("usage: pyGrabber <website_url> <-f file_format> [-h] [-d save directory] [-l search level]")
     print("\toptions:")
