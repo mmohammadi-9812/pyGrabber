@@ -7,9 +7,6 @@ import urllib.error
 import re
 import os
 
-# from colorama import Fore, Back, Style
-# TODO:we could have use bs4 but thene it was dependensy and u know what depency is bad i will delete colorma lyta
-
 timeout_time = 2
 search_level = 1
 url = ""
@@ -55,6 +52,35 @@ def is_url(__str__):
         return True
     return False
 
+def url_file_size(url):
+    try:
+        url_request = urllib.request.urlopen(url, timeout=timeout_time)
+        url_meta = url_request.info()
+        url_size_in_bytes = url_meta.get(name="Content-Length")
+        url_request.close()
+        url_size_in_bytes = int(url_size_in_bytes)
+        return url_size_in_bytes
+    except ValueError as e:
+        print("Cannot convert file size into int, there should be a problem in headers")
+        print(f"got this error: {e}")
+    except TimeoutError as e:
+        print(f"request timed out\n{e}")
+
+def partial_download(url, step=100):
+    total_size = url_file_size(url)
+    response = bytes()
+    current_size = 0
+    while current_size < total_size:
+        if (total_size - current_size) < step:
+            step = total_size - current_size
+        req = urllib.request.Request(url)
+        req.headers['Range'] = f'bytes={current_size}-{current_size + step}'
+        server_resp = urllib.request.urlopen(req)
+        response += server_resp.read()
+        server_resp.close()
+        current_size += step
+    return response
+
 def downloading(all , reqs , save_dir ):# timeout_time):
     if len(all) == 0 or len(reqs) == 0:
         print('nothing found')
@@ -87,52 +113,54 @@ def help():
     print("\t\t-d directory\tsaves the downloade files into this directory")
     print("\t\t-l level\tint number to define deapth of search default is 0")
 
-for x in range(0,len(sys.argv)):
-    if "-h" in sys.argv or "--help" in sys.argv:
-        help()
-        sys.exit(0)
-    if "-f" not in sys.argv or not is_url(sys.argv[1]):
-        print("Bad input")
-        sys.exit(0)
-    if sys.argv[x-1] == '-l' or sys.argv[x-1] == '-f' or sys.argv[x-1] == '-d':
-        continue
-    if sys.argv[x] == '-l':
-        print ('search level  : ' , end = '')
-        print (sys.argv[x+1])
-        search_level = int(sys.argv[x+1])
-    elif is_url(sys.argv[x]):
-        print ("search url    : " , end = '')
-        print (sys.argv[x] )
-        url = sys.argv[x]
-    elif sys.argv[x] == '-f':
-        print ("search format : " , end = '')
-        print (sys.argv[x+1])
-        file_format = sys.argv[x+1]
-        if not file_format.startswith('.'):
-            file_format = '.' + file_format
-    elif sys.argv[x] == '-d':
-        print ('saving into   : ' , end = '')
-        print (sys.argv[x+1])
-        save_directory = sys.argv[x+1]
-        if not os.path.exists(save_directory):
-            if input('directory does not exist create it (y/n)? : ') == 'y':
-                os.makedirs(save_directory)
-            else:
-                sys.exit(0)
+if __name__ == '__main__':
+    for x in range(0,len(sys.argv)):
+        if "-h" in sys.argv or "--help" in sys.argv:
+            help()
+            sys.exit(0)
+        if "-f" not in sys.argv or not is_url(sys.argv[1]):
+            print("Bad input")
+            sys.exit(0)
+        if sys.argv[x-1] == '-l' or sys.argv[x-1] == '-f' or sys.argv[x-1] == '-d':
+            continue
+        if sys.argv[x] == '-l':
+            print ('search level  : ' , end = '')
+            print (sys.argv[x+1])
+            search_level = int(sys.argv[x+1])
+        elif is_url(sys.argv[x]):
+            print ("search url    : " , end = '')
+            print (sys.argv[x] )
+            url = sys.argv[x]
+        elif sys.argv[x] == '-f':
+            print ("search format : " , end = '')
+            print (sys.argv[x+1])
+            file_format = sys.argv[x+1]
+            if not file_format.startswith('.'):
+                file_format = '.' + file_format
+        elif sys.argv[x] == '-d':
+            print ('saving into   : ' , end = '')
+            print (sys.argv[x+1])
+            save_directory = sys.argv[x+1]
+            if not os.path.exists(save_directory):
+                if input('directory does not exist create it (y/n)? : ') == 'y':
+                    os.makedirs(save_directory)
+                else:
+                    sys.exit(0)
 
-file_content = {url}
-append_file_content = set()
-all_of_links = set()
-
-for x in range(0 , search_level):
-    all_of_links = all_of_links.union(file_content)
-    files_to_download = files_to_download.union(get_sutable_links(file_content , file_format))
-    for y in file_content:
-        new_links = find_links_of(y , x)
-        append_file_content = append_file_content.union(new_links)
-
-    append_file_content.discard(all_of_links)
-    file_content = append_file_content
+    file_content = {url}
     append_file_content = set()
+    all_of_links = set()
 
-downloading(file_content , files_to_download , save_directory)# , timeout_time)
+    for x in range(0 , search_level):
+        all_of_links = all_of_links.union(file_content)
+        files_to_download = files_to_download.union(get_sutable_links(file_content , file_format))
+        for y in file_content:
+            new_links = find_links_of(y , x)
+            append_file_content = append_file_content.union(new_links)
+
+        append_file_content.discard(all_of_links)
+        file_content = append_file_content
+        append_file_content = set()
+
+# downloading(file_content , files_to_download , save_directory)# , timeout_time)
+    partial_download(url="http://ipv4.download.thinkbroadband.com/5MB.zip")
