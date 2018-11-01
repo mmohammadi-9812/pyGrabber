@@ -115,6 +115,13 @@ def downloading(all, reqs, save_dir):
 
 def handle_arguments():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--format', type=str, nargs='+', help='list of file formats to be downloaded')
+    parser.add_argument('-v', '--version', action='version',version='%(prog)s 0.2')
+    parser.add_argument('-l', '--level', type=int, choices=range(1, 10), default=1, help='level of searching in websites for downloading-default is one level search')
+    parser.add_argument('-d', '--directory', default=os.path.join(os.getcwd(), 'pyGrabber'), help='path to save files')
+    parser.add_argument('-u', '--url', type=str, help='website url that should be downloaded from')
+    args = parser.parse_args()
+    return args
 
 
 def help():
@@ -130,7 +137,7 @@ def help():
     print("\t\t-l level\tint number to define deapth of search default is 0")
 
 
-if __name__ == '__main__':
+if __name__ != '__main__':
     for x in range(len(sys.argv)):
         if "-h" in sys.argv or "--help" in sys.argv:
             help()
@@ -183,3 +190,4 @@ if __name__ == '__main__':
 
 # downloading(file_content , files_to_download , save_directory)
     partial_download(url="http://ipv4.download.thinkbroadband.com/5MB.zip")
+print(handle_arguments())
