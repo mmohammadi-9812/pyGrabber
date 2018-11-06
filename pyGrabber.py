@@ -6,11 +6,12 @@ import urllib.error
 import re
 import os
 import argparse
+# TODO: adding concurrent.futures to do threadingpool and downloading sim
 
 timeout_time = 2
 search_level = 1
 url = ""
-file_format = ""
+file_formats = ""
 files_to_download = set()
 save_directory = 'pyGrabber'
 
@@ -74,20 +75,29 @@ def url_file_size(url):
         print(f"request timed out\n{e}")
 
 
-def partial_download(url, step=100):
-    total_size = url_file_size(url)
-    response = bytes()
-    current_size = 0
+def partial_download(start: int, end: int, url: str, step: int = 1024*100):
+    total_size = end
+    response = bytearray()
+    current_size = start
     while current_size < total_size:
         if (total_size - current_size) < step:
             step = total_size - current_size
         req = urllib.request.Request(url)
         req.headers['Range'] = f'bytes={current_size}-{current_size + step}'
-        server_resp = urllib.request.urlopen(req)
-        response += server_resp.read()
-        server_resp.close()
+        with urllib.request.urlopen(req) as server_resp:
+            response.append(server_resp.read())
         current_size += step
     return response
+
+
+def download(link):
+    pass
+    file_size = url_file_size(link)
+    file_size_parted = dict(zip(range(file_size//8), [file_size/8]*file_size//8))
+    start_points = []
+    for key, value in file_size_parted.items():
+        start_points.append(key * value)
+    print(start_points)
 
 
 def downloading(all, reqs, save_dir):
@@ -115,62 +125,30 @@ def downloading(all, reqs, save_dir):
 
 def handle_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--format', type=str, nargs='+', help='list of file formats to be downloaded')
-    parser.add_argument('-v', '--version', action='version',version='%(prog)s 0.2')
-    parser.add_argument('-l', '--level', type=int, choices=range(1, 10), default=1, help='level of searching in websites for downloading-default is one level search')
-    parser.add_argument('-d', '--directory', default=os.path.join(os.getcwd(), 'pyGrabber'), help='path to save files')
-    parser.add_argument('-u', '--url', type=str, help='website url that should be downloaded from')
+    parser.add_argument('-f', '--format', required=True, type=str,
+                        nargs='+', help='list of file formats \
+                                        to be downloaded')
+    parser.add_argument('-v', '--version', action='version',
+                        version='%(prog)s 0.2')
+    parser.add_argument('-l', '--level', type=int, choices=range(1, 10),
+                        default=1, help='level of searching in websites for \
+                        downloading-default is one level search')
+    parser.add_argument('-d', '--directory', default=os.path.join(os.getcwd(),
+                        'pyGrabber'), help='path to save files')
+    parser.add_argument('-u', '--url', required=True, type=str, help='website \
+                        url that should be downloaded from')
     args = parser.parse_args()
     return args
 
 
-def help():
-    """
-    function to help users how to work with program
-    """
-    print("grabbs files from a specified web page with specified format")
-    print("usage: pyGrabber <website_url> <-f file_format> [-h] [-d save\
-            directory] [-l search level]")
-    print("\toptions:")
-    print("\t\t-f format\tsearch the pages for files with this format")
-    print("\t\t-d directory\tsaves the downloade files into this directory")
-    print("\t\t-l level\tint number to define deapth of search default is 0")
-
-
-if __name__ != '__main__':
-    for x in range(len(sys.argv)):
-        if "-h" in sys.argv or "--help" in sys.argv:
-            help()
-            sys.exit(0)
-        if "-f" not in sys.argv or not is_url(sys.argv[1]):
-            print("Bad input")
-            sys.exit(0)
-        if sys.argv[x-1] == '-l' or sys.argv[x-1] == '-f' or \
-                sys.argv[x-1] == '-d':
-            continue
-        if sys.argv[x] == '-l':
-            print('search level  : ', end='')
-            print(sys.argv[x+1])
-            search_level = int(sys.argv[x+1])
-        elif is_url(sys.argv[x]):
-            print("search url    : ", end='')
-            print(sys.argv[x])
-            url = sys.argv[x]
-        elif sys.argv[x] == '-f':
-            print("search format : ", end='')
-            print(sys.argv[x+1])
-            file_format = sys.argv[x+1]
-            if not file_format.startswith('.'):
-                file_format = '.' + file_format
-        elif sys.argv[x] == '-d':
-            print('saving into   : ', end='')
-            print(sys.argv[x+1])
-            save_directory = sys.argv[x+1]
-            if not os.path.exists(save_directory):
-                if input('directory does not exist create it (y/n)?: ') == 'y':
-                    os.makedirs(save_directory)
-                else:
-                    sys.exit(0)
+if __name__ == '__main__':
+    args = handle_arguments()
+    url = args.url
+    search_level = args.level
+    file_formats = args.format
+    save_directory = args.directory
+    for format in file_formats:
+        os.makedirs(os.path.join(save_directory, format), exist_ok=True)
 
     file_content = {url}
     append_file_content = set()
@@ -179,7 +157,7 @@ if __name__ != '__main__':
     for x in range(search_level):
         all_of_links = all_of_links.union(file_content)
         files_to_download = files_to_download.union(get_sutable_links(
-                    file_content, file_format))
+                    file_content, file_formats))
         for y in file_content:
             new_links = find_links_of(y, x)
             append_file_content = append_file_content.union(new_links)
@@ -189,5 +167,5 @@ if __name__ != '__main__':
         append_file_content = set()
 
 # downloading(file_content , files_to_download , save_directory)
-    partial_download(url="http://ipv4.download.thinkbroadband.com/5MB.zip")
-print(handle_arguments())
+    # partial_download(url="http://ipv4.download.thinkbroadband.com/5MB.zip")
+# print(handle_arguments())
